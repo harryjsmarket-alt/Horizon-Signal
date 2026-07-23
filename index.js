@@ -1,13 +1,18 @@
-// Horizon Signal - Production Build v1.0
 const express = require('express');
 const { Pool } = require('pg');
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// Health check
+// Health check - root
 app.get('/', (req, res) => {
     res.send('Horizon Signal - Attribution Engine Online');
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
 });
 
 // Click tracking endpoint
@@ -36,17 +41,38 @@ app.get('/track', async (req, res) => {
         });
     } catch (err) {
         console.error('Track error:', err);
-        res.status(500).send('Tracking failed');
+        res.status(500).json({ status: 'error', message: err.message });
     } finally {
         await pool.end();
     }
 });
 
-// Conversion endpoint
+// Database test endpoint
+app.get('/db-test', async (req, res) => {
+    try {
+        const pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false }
+        });
+        const result = await pool.query('SELECT NOW() as current_time');
+        await pool.end();
+        res.json({
+            status: 'Database connected!',
+            current_time: result.rows[0].current_time
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: 'Database connection failed',
+            error: err.message
+        });
+    }
+});
+
+// Conversion endpoint (S2S)
 app.post('/conversion', async (req, res) => {
     const { click_id, order_value, commission, order_id } = req.body;
     if (!click_id || !order_value) {
-        return res.status(400).send('Missing click_id or order_value');
+        return res.status(400).json({ status: 'error', message: 'Missing click_id or order_value' });
     }
 
     const pool = new Pool({
@@ -63,11 +89,12 @@ app.post('/conversion', async (req, res) => {
         res.json({ status: 'conversion recorded', click_id: click_id });
     } catch (err) {
         console.error('Conversion error:', err);
-        res.status(500).send('Conversion recording failed');
+        res.status(500).json({ status: 'error', message: err.message });
     } finally {
         await pool.end();
     }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Horizon Signal running on port ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Running on port ${PORT}`);
+});
