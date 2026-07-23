@@ -1,6 +1,5 @@
 // Horizon Signal - Production Build v1.0
 const express = require('express');
-const express = require('express');
 const { Pool } = require('pg');
 const app = express();
 
