@@ -1,3 +1,4 @@
+const authMiddleware = require('./authMiddleware');
 const express = require('express');
 const { Pool } = require('pg');
 const app = express();
@@ -10,7 +11,7 @@ app.get('/', (req, res) => {
 });
 
 // Click tracking endpoint
-app.get('/track', async (req, res) => {
+app.get('/track', authMiddleware, async (req, res) => {
     const { aff, product } = req.query;
     if (!aff) return res.status(400).send('Missing affiliate ID');
 
@@ -42,7 +43,7 @@ app.get('/track', async (req, res) => {
 });
 
 // S2S Conversion endpoint (called by merchants when a sale happens)
-app.post('/conversion', async (req, res) => {
+app.post('/conversion', authMiddleware, async (req, res) => {
     const { click_id, order_value, commission, order_id } = req.body;
     if (!click_id || !order_value) {
         return res.status(400).send('Missing click_id or order_value');
